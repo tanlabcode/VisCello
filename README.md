@@ -12,11 +12,13 @@ Qin Zhu, Kim Lab & Tan Lab, University of Pennsylvania
 * You can install VisCello with code below:
 
 ``` r
+Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS="true")
 install.packages("devtools") 
 devtools::install_github("qinzhu/VisCello") # install
 library(VisCello) # load
 cello() # launch with example data
 ```
+  
 
 ## Example datasets preprocessed for VisCello
 
@@ -234,8 +236,7 @@ Please cite VisCello properly if you use VisCello to host your dataset.
 
 Q. Zhu, J. I. Murray, K. Tan, J. Kim, qinzhu/VisCello: VisCello v1.0.0 (2019; https://zenodo.org/record/3262313).
 
-Packer, J.S., Zhu, Q., Huynh, C., Sivaramakrishnan, P., Preston, E., Dueck, H., Stefanik, D., Tan, K., Trapnell, C., Kim, J. and Waterston, R.H., 2019. A lineage-resolved molecular atlas of C. elegans embryogenesis at single cell resolution. BioRxiv, p.565549.
-
+Packer, J. S., Q. Zhu, C. Huynh, P. Sivaramakrishnan, E. Preston, H. Dueck, D. Stefanik, K. Tan, C. Trapnell, J. Kim, R. H. Waterston and J. I. Murray (2019). A lineage-resolved molecular atlas of C. elegans embryogenesis at single-cell resolution. Science: eaax1971.
 
 
 Reference
