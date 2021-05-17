@@ -95,11 +95,11 @@ Now the expression data and meta information required by VisCello is in place.
 * Seurat object
 
 ``` r
-fmeta <- data.frame(symbol = rownames(seurat@data)) # Seurat does not seem to store feature meta data as of version 3.0
+fmeta <- data.frame(symbol = rownames(seurat)) 
 rownames(fmeta) <- fmeta$symbol
 eset <- new("ExpressionSet",
-             assayData = assayDataNew("environment", exprs=Matrix(as.matrix(seurat@raw.data), sparse = T), 
-             norm_exprs = Matrix(as.matrix(seurat@data), sparse = T)),
+             assayData = assayDataNew("environment", exprs=seurat.hcc@assays$RNA@counts, 
+             norm_exprs = seurat.hcc@assays$RNA@data),
              phenoData =  new("AnnotatedDataFrame", data = seurat@meta.data),
              featureData = new("AnnotatedDataFrame", data = fmeta))
 ```
@@ -110,7 +110,7 @@ eset <- new("ExpressionSet",
 fmeta <- fData(cds)
 fmeta[[1]] <- fmeta$gene_short_name # Make first column gene name
 eset <- new("ExpressionSet",
-             assayData = assayDataNew("environment", exprs=Matrix(as.matrix(exprs(cds)), sparse = T),  
+             assayData = assayDataNew("environment", exprs=Matrix(exprs(cds), sparse = T),  
              norm_exprs = Matrix(log2(Matrix::t(Matrix::t(FM)/sizeFactors(cds))+1), sparse = T)), # Note this is equivalent to 'log' normalization method in monocle, you can use other normalization function
              phenoData =  new("AnnotatedDataFrame", data = pData(cds)),
              featureData = new("AnnotatedDataFrame", data = fmeta))
@@ -123,8 +123,8 @@ fmeta <- rowData(sce)
 # if rowData empty, you need to make a new fmeta with rownames of matrix: fmeta <- data.frame(symbol = rownames(sce)); rownames(fmeta) <- fmeta[[1]]
 fmeta[[1]] <- fmeta$symbol # Make sure first column is gene name
 eset <- new("ExpressionSet",
-             assayData = assayDataNew("environment", exprs=Matrix(sce@assays$data$counts, sparse = T), # Change 'counts' to raw count matrix
-             norm_exprs = Matrix(sce@assays$data$norm_counts, sparse = T)), # Change 'norm_counts' to raw count matrix
+             assayData = assayDataNew("environment", exprs=Matrix(sce@assays$data$counts, sparse = T), 
+             norm_exprs = Matrix(sce@assays$data$norm_counts, sparse = T)), 
              phenoData =  new("AnnotatedDataFrame", data = colData(sce)),
              featureData = new("AnnotatedDataFrame", data = fmeta))
 ```

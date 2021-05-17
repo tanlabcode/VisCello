@@ -540,7 +540,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
 
     
     pp_factor <- reactive({
-        plotProj(pvals$proj, dim_col = which(colnames(pvals$proj) %in% pvals$plot_col), group.by=pvals$proj_colorBy, pal=pvals$factor_color, size = pvals$marker_size, plot_title=NULL, legend.title = pvals$legend_title, na.col = "lightgrey", alpha=pvals$proj$alpha, alpha_level=pvals$alpha_level, legend=pvals$legend, onplotAnnot = pvals$onplotAnnot, onplotAnnotSize = pvals$text_size, legend.text.size = pvals$text_size*3, ncol=4, breaks = pvals$factor_breaks)
+        plotProj(pvals$proj, dim_col = which(colnames(pvals$proj) %in% pvals$plot_col), group.by=pvals$proj_colorBy, pal=pvals$factor_color, size = pvals$marker_size, plot_title=NULL, legend.title = pvals$legend_title, na.col = "lightgrey", alpha=pvals$proj$alpha, alpha_level=pvals$alpha_level, legend=pvals$legend, onplotAnnot = pvals$onplotAnnot, onplotAnnotSize = pvals$text_size, legend.text.size = pvals$text_size*3, ncol=4, breaks = pvals$factor_breaks, cover0 = T)
     })    
     
     pp_numeric <- reactive({
@@ -706,7 +706,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                            downcell = '.rds',
                            downmeta = '.csv'
             )
-            paste('cedata-', ev$sample, format, "-", Sys.Date(), fn_ext, sep='')
+            paste('data-', ev$sample, format, "-", Sys.Date(), fn_ext, sep='')
         },
         content = function(con, format = input$selectCell_goal) {
             req(format, length(ev$cells))
@@ -714,10 +714,10 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                 cur_eset <- eset[,ev$cells]
                 tmp<-ev$meta %>% tibble::rownames_to_column("Cell")
                 rownames(tmp) <- tmp$Cell
-                pData(cur_eset) <- tmp
+                pData(cur_eset) <- cbind(tmp[ev$cells,], pvals$proj[ev$cells, pvals$plot_col])
                 saveRDS(cur_eset, con, compress=F) # Not compress so that saving is faster
             } else if(format == "downmeta") {
-                write.csv(ev$meta[ev$cells, ], con)
+                write.csv(cbind(ev$meta[ev$cells, ], pvals$proj[ev$cells, pvals$plot_col]), con)
             }
         }
     )
@@ -962,7 +962,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
         ns <- session$ns
         input$plot_config_reset
         req(!input$proj_colorBy %in% c(ev$factor_cols, 'gene.expr'))
-        v_limit <- round(quantile(ev$value, .975, na.rm=T), 1)
+        v_limit <- max(round(quantile(ev$value, .975, na.rm=T), 1), 1)
         dropdownButton2(inputId=ns("v_cutoff"),
                         width = "500px",
                         plotOutput(ns("value_histogram_plot")),
@@ -1252,6 +1252,8 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
             df <- as.data.frame(as.matrix(exprs(eset)[curg, ev$vis@idx[cur_idx]]))
         }
         
+        noise <- rnorm(n = length(x = df))/1e+05
+        df <- df + noise
         # assign("df1", df, env = .GlobalEnv)
         # assign("cur_meta1", cur_meta, env = .GlobalEnv)
         feature_plot(df, input$bp_gene, 
