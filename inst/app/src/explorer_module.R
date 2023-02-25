@@ -80,7 +80,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                     column(3, uiOutput(ns("bp_sample_ui"))),
                     column(3, selectizeInput(ns("bp_gene"), "Search Gene:", choices = NULL, selected = NULL)),
                     column(3, uiOutput(ns("bp_colorBy_ui"))),
-                    column(3, selectInput(ns("bp_log_transform_gene"), "Data scale", choices=list("Log2 normalized count"="log2", "Molecule (UMI) count" = "raw")))
+                    column(3, selectInput(ns("bp_log_transform_gene"), "Data scale", choices=list("Log normalized count"="log", "Molecule (UMI) count" = "raw")))
                 ),
                 uiOutput(ns("bp_include_ui"))
             ),
@@ -153,14 +153,14 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
         req(input$proj_colorBy, !input$proj_colorBy %in% c("moreop", "lessop"))
         
         if(input$proj_colorBy == 'gene.expr') {
-            selectInput(ns("log_transform_gene"), "Data scale", choices=list("Log2 normalized count"="log2", "Molecule (UMI) count" = "raw"))
+            selectInput(ns("log_transform_gene"), "Data scale", choices=list("Log normalized count"="log", "Molecule (UMI) count" = "raw"))
         } else if(!input$proj_colorBy %in% ev$factor_cols){
             default_scale <- NULL
             if(input$proj_colorBy %in% pmeta_attr$meta_id && !is.null(pmeta_attr$dscale)) {
                 default_scale <- pmeta_attr$dscale[which(pmeta_attr$meta_id==input$proj_colorBy)]
                 if(is.na(default_scale)) default_scale <- NULL
             } 
-            selectInput(ns("log_transform_val"), "Data scale", choices=list("Log10"="log10", "Identity" = "identity"), selected = default_scale)
+            selectInput(ns("log_transform_val"), "Data scale", choices=list("Log"="log", "Identity" = "identity"), selected = default_scale)
         } else {
             return()
         }
@@ -407,7 +407,6 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
         factor_color <- NULL
         trans <- NULL
         limits <- NULL
-        factor_breaks <- waiver()
         if(input$proj_colorBy %in% ev$factor_cols) {
             plot_class = "factor"
             if(grepl("time.bin", input$proj_colorBy)) { 
@@ -423,14 +422,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                 names(factor_color) <- unique(proj[[input$proj_colorBy]])
             }
             factor_color[["unannotated"]] <- "lightgrey"
-            
-            if(input$proj_colorBy %in% c("cell.type", "cell.subtype")) {
-                factor_breaks <- names(which(table(proj[[input$proj_colorBy]]) >= 10)) 
-            } else {
-                factor_breaks <- names(factor_color)
-            }
-            factor_breaks <- factor_breaks[factor_breaks != "unannotated"]
-            
+            factor_color <- factor_color[!is.na(factor_color)]
             if(!is.null(input$factor_compo)) {
                 proj$alpha <- ifelse(proj[[input$proj_colorBy]] %in% input$factor_compo, "f", "t")
             }
@@ -493,7 +485,6 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
         pvals$marker_size <- input$marker_size
         pvals$text_size <- input$text_size
         pvals$factor_compo <- input$factor_compo
-        pvals$factor_breaks <- factor_breaks
         pvals$alpha_level <-input$alpha_level
         pvals$limits <- limits
         pvals$legend = legend
@@ -505,8 +496,8 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
     observe({
         req(input$proj_colorBy, input$log_transform_val)
         req(is.numeric(ev$meta[[input$proj_colorBy]]))
-        if(input$log_transform_val == "log10") {
-            ev$value <- log10(ev$meta[[input$proj_colorBy]] + 1) # +1 ok for pseudo? Be careful for small values! Don't allow log in future
+        if(input$log_transform_val == "log") {
+            ev$value <- log(ev$meta[[input$proj_colorBy]] + 1) # +1 ok for pseudo? Be careful for small values! Don't allow log in future
             ev$value_sample <- ev$sample # Use this to sync up reactivity
         } else {
             ev$value <- ev$meta[[input$proj_colorBy]]
@@ -529,7 +520,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
             return()
         }
         gnames <- gene_symbol_choices[input$gene_list]
-        if(input$log_transform_gene == "log2") {
+        if(input$log_transform_gene == "log") {
             gvals <- t(as.matrix(eset@assayData$norm_exprs[gnames,ev$vis@idx, drop=F]))
         } else if(input$log_transform_gene == "raw") {
             gvals <- t(as.matrix(exprs(eset)[gnames,ev$vis@idx, drop=F]))
@@ -540,7 +531,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
 
     
     pp_factor <- reactive({
-        plotProj(pvals$proj, dim_col = which(colnames(pvals$proj) %in% pvals$plot_col), group.by=pvals$proj_colorBy, pal=pvals$factor_color, size = pvals$marker_size, plot_title=NULL, legend.title = pvals$legend_title, na.col = "lightgrey", alpha=pvals$proj$alpha, alpha_level=pvals$alpha_level, legend=pvals$legend, onplotAnnot = pvals$onplotAnnot, onplotAnnotSize = pvals$text_size, legend.text.size = pvals$text_size*3, ncol=4, breaks = pvals$factor_breaks, cover0 = T)
+        plotProj(pvals$proj, dim_col = which(colnames(pvals$proj) %in% pvals$plot_col), group.by=pvals$proj_colorBy, pal=pvals$factor_color, size = pvals$marker_size, plot_title=NULL, legend.title = pvals$legend_title, na.col = "lightgrey", alpha=pvals$proj$alpha, alpha_level=pvals$alpha_level, legend=pvals$legend, onplotAnnot = pvals$onplotAnnot, onplotAnnotSize = pvals$text_size, legend.text.size = pvals$text_size*3, ncol=4, cover0 = T)
     })    
     
     pp_numeric <- reactive({
@@ -562,7 +553,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                                           alpha =pvals$proj$alpha,
                                           alpha_manual = c("f"=1,"t"=pvals$alpha_level),
                                           na.col = "lightgrey",
-                                          legend_name = ifelse(pvals$log_transform_gene == "log2", 
+                                          legend_name = ifelse(pvals$log_transform_gene == "log", 
                                                                paste0(colnames(pvals$gene_values), " expression\n(log normalized)"), 
                                                                paste0(colnames(pvals$gene_values), " expression\n(raw count)")))
         }
@@ -1026,16 +1017,6 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
         req(ev$cells)
         if(input$zoom_name == "") {
             pvals$proj <- ev$proj[ev$cells,]
-            factor_breaks <- waiver()
-            if(pvals$proj_colorBy %in% ev$factor_cols) {
-                if(input$proj_colorBy %in% c("cell.type", "cell.subtype")) {
-                    factor_breaks <- names(which(table(pvals$proj[[pvals$proj_colorBy]]) >= 10)) 
-                } else {
-                    factor_breaks <- unique(pvals$proj[[pvals$proj_colorBy]])
-                }
-                factor_breaks <- factor_breaks[factor_breaks != "unannotated"]
-            } 
-            pvals$factor_breaks <- factor_breaks
             if(!is.null(ev$gene_values)) pvals$gene_values <- ev$gene_values[ev$cells,, drop=F]
             return()
         }
@@ -1243,10 +1224,10 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
             names(factor_color) <- unique(ev$meta[[input$bp_colorBy]])
         }
         factor_color[["unannotated"]] <- "lightgrey"
-        
+        factor_color <- factor_color[!is.na(factor_color)]
         colorBy_name <-  pmeta_attr$meta_name[which(pmeta_attr$meta_id == input$bp_colorBy)]
         curg <- gene_symbol_choices[input$bp_gene]
-        if(input$bp_log_transform_gene == "log2") {
+        if(input$bp_log_transform_gene == "log") {
             df <- as.data.frame(as.matrix(eset@assayData$norm_exprs[curg, ev$vis@idx[cur_idx]]))
         } else {
             df <- as.data.frame(as.matrix(exprs(eset)[curg, ev$vis@idx[cur_idx]]))
@@ -1264,7 +1245,7 @@ explorer_server <- function(input, output, session, sclist, useid, cmeta = NULL)
                      text.size = input$bp_text_size, pointSize = input$bp_marker_size, legend = ifelse(input$bp_legend_type == "l", T, F), 
                      breaks = unique(cur_group), axis.text.angle = input$bp_xaxis_angle, 
                      order.by = ifelse(grepl("time",input$bp_colorBy, ignore.case = T), "none", "mean"), 
-                     ylab.label = ifelse(input$bp_log_transform_gene == "log2", "Expression (log2 normalized)", "Expression (raw count)")
+                     ylab.label = ifelse(input$bp_log_transform_gene == "log", "Expression (log normalized)", "Expression (raw count)")
         )
     })
     
